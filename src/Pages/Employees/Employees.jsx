@@ -93,13 +93,16 @@ const Employees = () => {
 		<div className="mainEmployees-container">
 			<h1>Current Employees</h1>
 			<div className="tableOptionTool-Container">
-				<select value={pageSize} onChange={handleChangePageSize}>
-					{[10, 25, 50, 100].map((option) => (
-						<option key={option} value={option}>
-							{option}
-						</option>
-					))}
-				</select>
+				<div className="entries-Container">
+					<label htmlFor="pageSizeSelect">Show entries:</label>
+					<select value={pageSize} onChange={handleChangePageSize}>
+						{[10, 25, 50, 100].map((option) => (
+							<option key={option} value={option}>
+								{option}
+							</option>
+						))}
+					</select>
+				</div>
 				<input
 					type="text"
 					value={filterText}
