@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { useTable, usePagination, useFilters } from 'react-table';
 import { Link } from 'react-router-dom';
 
-import { getSavedValues } from '@/_Services/localStorageGetDatas.service';
 import { useUserListContext } from '@/Context/UsersListContext';
 
 import './employees.css';
@@ -13,18 +11,6 @@ const formatDate = (dateString) => {
 	return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
-const TextFilter = ({ column }) => {
-	const { setFilter } = column;
-
-	return (
-		<input
-		value={column.filterValue || ''}
-		onChange={(e) => setFilter(e.target.value)}
-		placeholder={`Search ${column.Header}`}
-		/>
-	);
-};
-
 const Employees = () => {
 	const { userList } = useUserListContext();
 	const [pageIndex, setPageIndex] = useState(0);
@@ -33,8 +19,7 @@ const Employees = () => {
 
 	const employees = userList || [];
 
-	const columns = React.useMemo(
-		() => [
+	const columns = [
 		{ Header: 'First Name', accessor: 'firstName' },
 		{ Header: 'Last Name', accessor: 'lastName' },
 		{
@@ -52,114 +37,91 @@ const Employees = () => {
 		{ Header: 'City', accessor: 'city' },
 		{ Header: 'State', accessor: 'state' },
 		{ Header: 'Zip Code', accessor: 'zipCode' },
-		],
-		[]
-	);
+	];
 
-	const data = React.useMemo(() => {
-		// Appliquer le filtre global à toutes les colonnes
-		return employees.filter((row) =>
+	const filteredData = employees.filter((row) =>
 		columns.some((column) =>
 			String(row[column.accessor]).toLowerCase().includes(filterText.toLowerCase())
 		)
-		);
-	}, [employees, filterText, columns]);
-
-	const {
-		getTableProps,
-		getTableBodyProps,
-		headerGroups,
-		page,
-		prepareRow,
-		state: { pageIndex: statePageIndex, pageSize: statePageSize },
-	} = useTable(
-		{
-		columns,
-		data,
-		initialState: { pageIndex, pageSize },
-		manualPagination: true,
-		},
-		useFilters,
-		usePagination
 	);
 
-	const handleChangePageSize = (e) => {
-		setPageSize(Number(e.target.value));
-		setPageIndex(0);
-	};
+	const paginatedData = filteredData.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
 
 	return (
 		<main className="mainEmployees css-selector">
-		<div className="mainEmployees-container">
-			<h1>Current Employees</h1>
-			<div className="tableOptionTool-Container">
-				<div className="entries-Container">
-				<label>
-					Show entries:
-					<select value={pageSize} onChange={handleChangePageSize}>
-					{[10, 25, 50, 100].map((option) => (
-						<option key={option} value={option}>
-						{option}
-						</option>
-					))}
-					</select>
-				</label>
+			<div className="mainEmployees-container">
+				<h1>Current Employees</h1>
+				<div className="tableOptionTool-Container">
+					<div className="entries-Container">
+						<label>
+							Show entries:
+							<select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+								{[10, 25, 50, 100].map((option) => (
+									<option key={option} value={option}>
+										{option}
+									</option>
+								))}
+							</select>
+						</label>
+					</div>
+					<input
+						type="text"
+						value={filterText}
+						onChange={(e) => setFilterText(e.target.value)}
+						placeholder="Search..."
+					/>
 				</div>
-				<input
-					type="text"
-					value={filterText}
-					onChange={(e) => setFilterText(e.target.value)}
-					placeholder="Search..."
-				/>
-			</div>
-			{data.length > 0 ? (
-				<table {...getTableProps()} className="display">
-					<thead>
-					{headerGroups.map((headerGroup) => (
-						<tr {...headerGroup.getHeaderGroupProps()}>
-						{headerGroup.headers.map((column) => (
-							<th {...column.getHeaderProps()}>{column.render('Header')}</th>
-						))}
-						</tr>
-					))}
-					</thead>
-					<tbody {...getTableBodyProps()}>
-					{page.map((row) => {
-						prepareRow(row);
-						return (
-						<tr {...row.getRowProps()}>
-							{row.cells.map((cell) => (
-							<td {...cell.getCellProps()}>{cell.render('Cell')}</td>
+				{filteredData.length > 0 ? (
+					<table className="display">
+						<thead>
+							<tr>
+								{columns.map((column) => (
+									<th key={column.Header}>{column.Header}</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{paginatedData.map((row, rowIndex) => (
+								<tr key={rowIndex}>
+									{columns.map((column) => (
+										<td key={column.Header}>
+											{column.Cell ? column.Cell({ value: row[column.accessor] }) : row[column.accessor]}
+										</td>
+									))}
+								</tr>
 							))}
-						</tr>
-						);
-					})}
-					</tbody>
-				</table>
-			) : (
-				<p>No employees available.</p>
-			)}
-			<div className="tableFooter-Container">
-				<div>
-					Showing {pageIndex * pageSize + 1} to {pageIndex * pageSize + page.length} of {data.length} entries
+						</tbody>
+					</table>
+				) : (
+					<p>No employees available.</p>
+				)}
+				<div className="tableFooter-Container">
+					<div>
+						Showing {pageIndex * pageSize + 1} to {Math.min((pageIndex + 1) * pageSize, filteredData.length)} of {filteredData.length} entries
+					</div>
+					<div>
+						<button onClick={() => setPageIndex(0)} disabled={pageIndex === 0}>
+							{'<<'}
+						</button>{' '}
+						<button onClick={() => setPageIndex(pageIndex - 1)} disabled={pageIndex === 0}>
+							{'<'}
+						</button>{' '}
+						<button
+							onClick={() => setPageIndex(pageIndex + 1)}
+							disabled={pageIndex >= Math.ceil(filteredData.length / pageSize) - 1}
+						>
+							{'>'}
+						</button>{' '}
+						<button
+							onClick={() => setPageIndex(Math.ceil(filteredData.length / pageSize) - 1)}
+							disabled={pageIndex >= Math.ceil(filteredData.length / pageSize) - 1}
+						>
+							{'>>'}
+						</button>{' '}
+					</div>
 				</div>
-				<div>
-					<button onClick={() => setPageIndex(0)} disabled={pageIndex === 0}>
-						{'<<'}
-					</button>{' '}
-					<button onClick={() => setPageIndex(pageIndex - 1)} disabled={pageIndex === 0}>
-						{'<'}
-					</button>{' '}
-					<button onClick={() => setPageIndex(pageIndex + 1)} disabled={pageIndex >= Math.ceil(data.length / pageSize) - 1}>
-						{'>'}
-					</button>{' '}
-					<button onClick={() => setPageIndex(Math.ceil(data.length / pageSize) - 1)} disabled={pageIndex >= Math.ceil(data.length / pageSize) - 1}>
-						{'>>'}
-					</button>{' '}
-				</div>
+				<Link to="/home">Home</Link>
 			</div>
-			<Link to="/home">Home</Link>
-		</div>
 		</main>
 	);
 };
